@@ -2,6 +2,5 @@
 .venv-linux/
 __pycache__/
 *.pyc
-results/*.csv
-results/*.jsonl
+**/results/
 .DS_Store
