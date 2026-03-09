@@ -22,6 +22,8 @@ class LedgerApp(tk.Tk):
         self.title(main.APP_TITLE)
         self.geometry("1180x720")
         self._df = None
+        self._sort_col = ""
+        self._sort_reverse = False
         self._build_ui()
         self._load_default()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -105,7 +107,7 @@ class LedgerApp(tk.Tk):
         columns = list(self._df.columns)
         self._tree["columns"] = columns
         for col in columns:
-            self._tree.heading(col, text=col)
+            self._tree.heading(col, text=col, command=lambda c=col: self._sort_by(c))
             self._tree.column(col, width=120, anchor=tk.CENTER, stretch=True)
         for _, row in self._df.iterrows():
             values = []
@@ -126,6 +128,34 @@ class LedgerApp(tk.Tk):
                 else:
                     values.append(str(value))
             self._tree.insert("", tk.END, values=values)
+        self._refresh_headings()
+
+    def _sort_by(self, col: str) -> None:
+        if self._df is None or col not in self._df.columns:
+            return
+        self._sort_reverse = (self._sort_col == col) and not self._sort_reverse
+        self._sort_col = col
+        series = self._df[col]
+        ascending = not self._sort_reverse
+
+        if getattr(series, "dtype", None) == "object":
+            order = series.fillna("").astype(str).str.casefold()
+            self._df = (
+                self._df.assign(_sort_key=order)
+                .sort_values("_sort_key", ascending=ascending, na_position="last")
+                .drop(columns=["_sort_key"])
+                .reset_index(drop=True)
+            )
+        else:
+            self._df = self._df.sort_values(col, ascending=ascending, na_position="last").reset_index(drop=True)
+        self._refresh_tree()
+
+    def _refresh_headings(self) -> None:
+        columns = list(self._df.columns) if self._df is not None else []
+        indicator = " ▼" if self._sort_reverse else " ▲"
+        for col in columns:
+            text = col + (indicator if col == self._sort_col else "")
+            self._tree.heading(col, text=text, command=lambda c=col: self._sort_by(c))
 
     def _refresh_chart(self) -> None:
         chart = main.get_chart_data(self._df)
