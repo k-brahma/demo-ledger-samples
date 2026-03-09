@@ -1,0 +1,7 @@
+.venv/
+.venv-linux/
+__pycache__/
+*.pyc
+results/*.csv
+results/*.jsonl
+.DS_Store
